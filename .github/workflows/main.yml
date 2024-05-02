@@ -1,0 +1,51 @@
+name: Create Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      buildType:
+        description: 'Build Type'
+        required: true
+        default: 'Adhoc'
+        type: choice
+        options:
+          - Adhoc
+          - Transmittal
+          - Test
+
+jobs:
+  CreateReleaseTag:
+    runs-on: [self-hosted, x64, linux, philips-code-hub, ubuntu-latest]
+    outputs:
+      version_name: ${{ steps.set_version.outputs.version_name }}
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+
+    env:
+      Release: 5.0.0
+      VersionName: ""
+      BuildType: Adhoc
+      KeepLatest: 3
+
+    steps:
+      - name: Check trigger type
+        id: check_trigger
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        run: |
+            buildType=${{ inputs.buildType }}
+            if [[ "$buildType" =='Transmittal' ]]; then
+              env:
+                BuildType=$buildType
+                KeepLatest=5
+            elif [[ "$buildType" =='Test' ]]; then
+              env:
+                BuildType=$buildType
+                KeepLatest=1
+            fi
+
+      - name: Set Version Name
+        id: set_version
+        run: |
+          version="${{ env.Release }}.0.${{ github.run_number }}"
+          echo "VersionName=$version" >> "$GITHUB_ENV"
+          echo "version_name=$version" >> "$GITHUB_OUTPUT"
+          echo "${{ github.event_name}}, ${{env.BuildType}}, ${{env.KeepLatest}}, $version "
